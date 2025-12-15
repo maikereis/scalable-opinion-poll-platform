@@ -14,3 +14,4 @@ O objetivo é desenvolver um sistema de pesquisa de opinião. Essas pesquisas se
 
 - [Contexto](docs/DOMAIN-CONTEXT.md) - Contexto de domínio
 - [Requisitos](docs/REQUIREMENTS.md) - Requisitos funcionais e não-funcionais
+- [Estimativa de Capacidade](docs/CAPACITY-ESTIMATION.md) - Cálculos de escala
