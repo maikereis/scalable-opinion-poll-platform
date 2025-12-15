@@ -168,7 +168,7 @@ Total por voto: ~220 bytes ≈ 0,22 KB
 - Cada contador: 8 bytes (INT64)
 - Total: **200 bytes** (negligível)
 
-**3. Cache de Prevenção de Duplicatas**
+**3. Cache de Prevenção de Duplicatas** (Desnecessário, vamos utilizar OAuth)
 - Usuários únicos ativos em janela de 1 hora
 - Estimativa: 100.000 usuários simultâneos (pico)
 - Hash identifier: 64 bytes cada
