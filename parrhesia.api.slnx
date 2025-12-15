@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Application/">
+    <Project Path="parrhesia.api/parrhesia.api.csproj" />
+  </Folder>
+  <Folder Name="/Domain/" />
+  <Folder Name="/Infrastructure/" />
+</Solution>
