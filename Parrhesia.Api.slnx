@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Parrhesia.Api/Parrhesia.Api.csproj" DisplayName="Parrhesia.Api" />
+  </Folder>
+</Solution>
