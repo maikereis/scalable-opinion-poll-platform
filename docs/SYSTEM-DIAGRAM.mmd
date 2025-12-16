@@ -1,0 +1,40 @@
+graph TB
+    subgraph "External Actors"
+        U1[Survey Respondents<br/>Millions of users]
+        U2[Survey Creators<br/>Internal staff]
+        U3[Results Viewers<br/>Authenticated users]
+    end
+
+    subgraph "Parrhesia Survey System"
+        subgraph "Application Layer"
+            API[ASP.NET Core Web API<br/>Stateless, Auto-scaling<br/>Handles: Survey CRUD,<br/>Vote submission,<br/>Results aggregation]
+        end
+        
+        subgraph "Data Layer"
+            DB[(PostgreSQL<br/>Primary Data Store<br/>Tables: Surveys, Questions,<br/>AnswerOptions, Responses)]
+            CACHE[Redis Cache<br/>Read-heavy data<br/>Survey definitions,<br/>Question text]
+        end
+        
+        subgraph "Infrastructure"
+            LB[Load Balancer]
+            CDN[CDN - Static Assets<br/>Survey UI, Images]
+        end
+    end
+
+    U1 -->|View/Submit Survey| LB
+    U2 -->|Create/Manage Surveys| LB
+    U3 -->|View Results| LB
+    
+    LB -->|Distribute requests| API
+    API -->|Write votes| DB
+    API -->|Read survey data| CACHE
+    CACHE -->|Cache miss| DB
+    API -->|Query results| DB
+    
+    U1 -.->|Static content| CDN
+
+    style API fill:#4A90E2,stroke:#2E5C8A,color:#fff
+    style DB fill:#50C878,stroke:#2E7D4E,color:#fff
+    style CACHE fill:#FF6B6B,stroke:#C92A2A,color:#fff
+    style LB fill:#9B59B6,stroke:#6C3483,color:#fff
+    style CDN fill:#F39C12,stroke:#B9770E,color:#fff
