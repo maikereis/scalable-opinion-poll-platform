@@ -24,8 +24,4 @@
     <ProjectReference Include="..\..\src\Parrhesia.Domain\Parrhesia.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="SurveyManagement\ValueObjects\" />
-  </ItemGroup>
-
 </Project>

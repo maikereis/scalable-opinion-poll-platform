@@ -21,8 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Parrhesia.Application\Parrhesia.Application.csproj" />
-    <ProjectReference Include="..\..\src\Parrhesia.Domain\Parrhesia.Domain.csproj" />
+	  <ProjectReference Include="..\..\src\Parrhesia.Application\Parrhesia.Application.csproj" />
   </ItemGroup>
 
 </Project>
