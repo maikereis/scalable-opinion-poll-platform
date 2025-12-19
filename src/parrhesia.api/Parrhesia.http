@@ -1,6 +1,0 @@
-@Parrhesia.Api_HostAddress = http://localhost:5161
-
-GET {{Parrhesia.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
