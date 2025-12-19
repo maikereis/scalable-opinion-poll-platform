@@ -8,6 +8,10 @@ public class QuestionText : ValueObject
 
     public string Value { get; }
 
+#pragma warning disable CS8618
+    private QuestionText() { }
+#pragma warning restore CS8618
+
     private QuestionText(string value)
     {
         Value = value;
@@ -25,6 +29,8 @@ public class QuestionText : ValueObject
 
         return new QuestionText(trimmed);
     }
+
+    public static QuestionText Reconstitute(string value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

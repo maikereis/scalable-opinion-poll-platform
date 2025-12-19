@@ -11,19 +11,23 @@ public class Survey : AggregateRoot
     private readonly List<Question> _questions = [];
     private readonly List<Option> _options = [];
 
-    public SurveyId SurveyId { get; }
-    public SurveyTitle Title { get; private set; }
-    public string Description { get; private set; }
-    public SurveyStatus Status { get; private set; }
-    public CollectionPeriod CollectionPeriod { get; private set; }
+    public SurveyId SurveyId { get; private init; } = null!;
+    public SurveyTitle Title { get; private set; } = null!;
+    public string Description { get; private set; } = null!;
+    public SurveyStatus Status { get; private set; } = null!;
+    public CollectionPeriod CollectionPeriod { get; private set; } = null!;
     public IReadOnlyList<Question> Questions => _questions.AsReadOnly();
     public IReadOnlyList<Option> Options => _options.AsReadOnly();
-    public DateTime CreatedAt { get; }
+    public DateTime CreatedAt { get; private init; }
     public DateTime UpdatedAt { get; private set; }
+
+#pragma warning disable CS8618
+    private Survey() : base() { }
+#pragma warning restore CS8618
 
     private Survey(SurveyTitle title, string description, CollectionPeriod period)
     {
-        SurveyId = SurveyId.NewId();
+        SurveyId = SurveyId.Create(Id);
         Title = title;
         Description = description;
         Status = SurveyStatus.Draft;

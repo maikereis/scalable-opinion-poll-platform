@@ -5,13 +5,17 @@ namespace Parrhesia.Domain.SurveyManagement.Entities;
 
 public class Question : Entity
 {
-    public QuestionId QuestionId { get; }
-    public QuestionText Text { get; private set; }
+    public QuestionId QuestionId { get; private init; } = null!;
+    public QuestionText Text { get; private set; } = null!;
     public int Order { get; private set; }
+
+#pragma warning disable CS8618
+    private Question() : base() { }
+#pragma warning restore CS8618
 
     private Question(QuestionText text, int order)
     {
-        QuestionId = QuestionId.NewId();
+        QuestionId = QuestionId.Create(Id);
         Text = text;
         Order = order;
     }

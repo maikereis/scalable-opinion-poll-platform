@@ -10,6 +10,10 @@ public class DeviceInfo : ValueObject
     public string UserAgent { get; }
     public string IpHash { get; }
 
+#pragma warning disable CS8618
+    private DeviceInfo() { }
+#pragma warning restore CS8618
+
     private DeviceInfo(string deviceId, string userAgent, string ipHash)
     {
         DeviceId = deviceId;

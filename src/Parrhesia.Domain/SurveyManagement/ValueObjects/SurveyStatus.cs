@@ -10,6 +10,10 @@ public class SurveyStatus : ValueObject
 
     public string Value { get; }
 
+#pragma warning disable CS8618
+    private SurveyStatus() { }
+#pragma warning restore CS8618
+
     private SurveyStatus(string value)
     {
         Value = value;
@@ -26,9 +30,11 @@ public class SurveyStatus : ValueObject
         };
     }
 
-    public bool IsDraft => this == Draft;
-    public bool IsActive => this == Active;
-    public bool IsClosed => this == Closed;
+    public static SurveyStatus Reconstitute(string value) => new(value);
+
+    public bool IsDraft => Value == "Draft";
+    public bool IsActive => Value == "Active";
+    public bool IsClosed => Value == "Closed";
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

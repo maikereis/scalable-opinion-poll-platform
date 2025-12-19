@@ -8,6 +8,10 @@ public class OptionText : ValueObject
 
     public string Value { get; }
 
+#pragma warning disable CS8618
+    private OptionText() { }
+#pragma warning restore CS8618
+
     private OptionText(string value)
     {
         Value = value;
@@ -25,6 +29,8 @@ public class OptionText : ValueObject
 
         return new OptionText(trimmed);
     }
+
+    public static OptionText Reconstitute(string value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

@@ -127,6 +127,25 @@ public class BallotTests
     [Fact]
     public void Ballot_ShouldBeImmutable()
     {
+        // Ballot should not expose public setters for its core properties
+        // Note: With EF Core support, properties may have private setters for materialization,
+        // but they should NOT be publicly settable after construction
+        var type = typeof(Ballot);
+
+        // Check that no properties have public setters
+        var propertiesWithPublicSetters = type.GetProperties()
+            .Where(p => p.CanWrite && p.SetMethod?.IsPublic == true)
+            .Select(p => p.Name)
+            .ToList();
+
+        propertiesWithPublicSetters.Should().BeEmpty(
+            "Ballot should not have any properties with public setters. " +
+            $"Found: {string.Join(", ", propertiesWithPublicSetters)}");
+    }
+
+    [Fact]
+    public void Ballot_CoreProperties_ShouldBeGetOnly()
+    {
         var ballot = Ballot.Cast(
             SurveyId.NewId(),
             QuestionId.NewId(),
@@ -135,9 +154,18 @@ public class BallotTests
 
         var type = ballot.GetType();
 
-        type.GetProperty(nameof(Ballot.SurveyId))!.CanWrite.Should().BeFalse();
-        type.GetProperty(nameof(Ballot.QuestionId))!.CanWrite.Should().BeFalse();
-        type.GetProperty(nameof(Ballot.SelectedOptionId))!.CanWrite.Should().BeFalse();
-        type.GetProperty(nameof(Ballot.VoterFingerprint))!.CanWrite.Should().BeFalse();
+        // These critical properties should be read-only (no public setter)
+        var surveyIdProp = type.GetProperty(nameof(Ballot.SurveyId));
+        var questionIdProp = type.GetProperty(nameof(Ballot.QuestionId));
+        var optionIdProp = type.GetProperty(nameof(Ballot.SelectedOptionId));
+        var fingerprintProp = type.GetProperty(nameof(Ballot.VoterFingerprint));
+        var castedAtProp = type.GetProperty(nameof(Ballot.CastedAt));
+
+        // Verify no public setters exist
+        surveyIdProp!.SetMethod?.IsPublic.Should().NotBe(true, "SurveyId should not have a public setter");
+        questionIdProp!.SetMethod?.IsPublic.Should().NotBe(true, "QuestionId should not have a public setter");
+        optionIdProp!.SetMethod?.IsPublic.Should().NotBe(true, "SelectedOptionId should not have a public setter");
+        fingerprintProp!.SetMethod?.IsPublic.Should().NotBe(true, "VoterFingerprint should not have a public setter");
+        castedAtProp!.SetMethod?.IsPublic.Should().NotBe(true, "CastedAt should not have a public setter");
     }
 }

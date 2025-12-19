@@ -9,6 +9,10 @@ public partial class VoterFingerprint : ValueObject
 
     public string Value { get; }
 
+#pragma warning disable CS8618
+    private VoterFingerprint() { }
+#pragma warning restore CS8618
+
     private VoterFingerprint(string value)
     {
         Value = value;
@@ -27,6 +31,8 @@ public partial class VoterFingerprint : ValueObject
 
         return new VoterFingerprint(value.ToUpperInvariant());
     }
+
+    public static VoterFingerprint Reconstitute(string value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

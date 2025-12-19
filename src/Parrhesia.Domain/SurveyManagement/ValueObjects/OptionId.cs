@@ -6,6 +6,8 @@ public class OptionId : ValueObject
 {
     public Guid Value { get; }
 
+    private OptionId() { }
+
     private OptionId(Guid value)
     {
         Value = value;
@@ -20,6 +22,8 @@ public class OptionId : ValueObject
 
         return new OptionId(value);
     }
+
+    public static OptionId Reconstitute(Guid value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

@@ -3,9 +3,11 @@
     <Project Path="src/Parrhesia.Api/Parrhesia.Api.csproj" />
     <Project Path="src/Parrhesia.Application/Parrhesia.Application.csproj" />
     <Project Path="src/Parrhesia.Domain/Parrhesia.Domain.csproj" />
+    <Project Path="src/Parrhesia.Infrastructure/Parrhesia.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Parrhesia.Application.Tests/Parrhesia.Application.Tests.csproj" />
     <Project Path="tests/Parrhesia.Domain.Tests/Parrhesia.Domain.Tests.csproj" />
+    <Project Path="tests/Parrhesia.Infrastructure.Tests/Parrhesia.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

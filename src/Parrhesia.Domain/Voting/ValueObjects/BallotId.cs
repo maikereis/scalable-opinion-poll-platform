@@ -6,6 +6,8 @@ public class BallotId : ValueObject
 {
     public Guid Value { get; }
 
+    private BallotId() { }
+
     private BallotId(Guid value)
     {
         Value = value;
@@ -20,6 +22,8 @@ public class BallotId : ValueObject
 
         return new BallotId(value);
     }
+
+    public static BallotId Reconstitute(Guid value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

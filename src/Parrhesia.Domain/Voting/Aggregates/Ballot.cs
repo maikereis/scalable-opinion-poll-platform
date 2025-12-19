@@ -7,13 +7,20 @@ namespace Parrhesia.Domain.Voting.Aggregates;
 
 public class Ballot : AggregateRoot
 {
-    public BallotId BallotId { get; }
-    public SurveyId SurveyId { get; }
-    public QuestionId QuestionId { get; }
-    public OptionId SelectedOptionId { get; }
-    public VoterFingerprint VoterFingerprint { get; }
+    public BallotId BallotId { get; } = null!;
+    public SurveyId SurveyId { get; } = null!;
+    public QuestionId QuestionId { get; } = null!;
+    public OptionId SelectedOptionId { get; } = null!;
+    public VoterFingerprint VoterFingerprint { get; } = null!;
     public DateTime CastedAt { get; }
     public DeviceInfo? DeviceInfo { get; }
+
+    /// <summary>
+    /// EF Core constructor - required for materialization
+    /// </summary>
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value
+    private Ballot() : base() { }
+#pragma warning restore CS8618
 
     private Ballot(
         SurveyId surveyId,

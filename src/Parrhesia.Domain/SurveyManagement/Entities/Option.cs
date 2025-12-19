@@ -5,14 +5,18 @@ namespace Parrhesia.Domain.SurveyManagement.Entities;
 
 public class Option : Entity
 {
-    public OptionId OptionId { get; }
-    public QuestionId QuestionId { get; }
-    public OptionText Text { get; private set; }
+    public OptionId OptionId { get; private init; } = null!;
+    public QuestionId QuestionId { get; private init; } = null!;
+    public OptionText Text { get; private set; } = null!;
     public int Order { get; private set; }
+
+#pragma warning disable CS8618
+    private Option() : base() { }
+#pragma warning restore CS8618
 
     private Option(QuestionId questionId, OptionText text, int order)
     {
-        OptionId = OptionId.NewId();
+        OptionId = OptionId.Create(Id);
         QuestionId = questionId;
         Text = text;
         Order = order;

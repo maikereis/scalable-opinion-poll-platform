@@ -6,6 +6,8 @@ public class SurveyId : ValueObject
 {
     public Guid Value { get; }
 
+    private SurveyId() { }
+
     private SurveyId(Guid value)
     {
         Value = value;
@@ -20,6 +22,8 @@ public class SurveyId : ValueObject
 
         return new SurveyId(value);
     }
+
+    public static SurveyId Reconstitute(Guid value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

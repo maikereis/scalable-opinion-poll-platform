@@ -8,6 +8,10 @@ public class SurveyTitle : ValueObject
 
     public string Value { get; }
 
+#pragma warning disable CS8618
+    private SurveyTitle() { }
+#pragma warning restore CS8618
+
     private SurveyTitle(string value)
     {
         Value = value;
@@ -25,6 +29,8 @@ public class SurveyTitle : ValueObject
 
         return new SurveyTitle(trimmed);
     }
+
+    public static SurveyTitle Reconstitute(string value) => new(value);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

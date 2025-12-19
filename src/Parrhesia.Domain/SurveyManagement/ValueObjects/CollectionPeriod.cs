@@ -10,6 +10,8 @@ public class CollectionPeriod : ValueObject
     public DateTime StartDate { get; }
     public DateTime EndDate { get; }
 
+    private CollectionPeriod() { }
+
     private CollectionPeriod(DateTime startDate, DateTime endDate)
     {
         StartDate = startDate;
