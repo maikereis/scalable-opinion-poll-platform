@@ -1,0 +1,29 @@
+# Development overrides - enables hot reload and debugging
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/Parrhesia.Api/Dockerfile
+      target: build
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/src/src
+      # Mount NuGet packages cache
+      - ~/.nuget/packages:/root/.nuget/packages:ro
+    working_dir: /src/src/Parrhesia.Api
+    # Use dotnet watch for hot reload
+    command: dotnet watch run --urls http://+:8080 --no-launch-profile
+    environment:
+      - DOTNET_USE_POLLING_FILE_WATCHER=1
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true
+    # Override healthcheck for faster feedback during development
+    healthcheck:
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy

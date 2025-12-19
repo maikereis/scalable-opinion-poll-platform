@@ -28,10 +28,11 @@ public class SurveyQueryService : ISurveyQueryService
             .ToListAsync(cancellationToken);
 
         var questionsWithOptions = options
-            .GroupBy(o => o.QuestionId)
+            .GroupBy(o => o.QuestionId.Value) 
             .ToDictionary(
-                g => g.Key,
-                g => g.Select(o => o.OptionId).ToList());
+                g => QuestionId.Reconstitute(g.Key),
+                g => g.Select(o => OptionId.Reconstitute(o.Id)) // Use o .Id (Guid) para criar o OptionId
+                    .ToList());
 
         return new SurveyStatusDto
         {

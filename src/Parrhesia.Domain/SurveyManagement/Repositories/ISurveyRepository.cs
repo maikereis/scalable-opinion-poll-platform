@@ -7,6 +7,7 @@ public interface ISurveyRepository
 {
     Task<Survey?> GetByIdAsync(SurveyId id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Survey>> GetActiveAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Survey>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
     Task AddAsync(Survey survey, CancellationToken cancellationToken = default);
     Task UpdateAsync(Survey survey, CancellationToken cancellationToken = default);

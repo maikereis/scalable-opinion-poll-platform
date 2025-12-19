@@ -21,7 +21,14 @@ public record SurveyStatusDto
 
     public bool HasOption(QuestionId questionId, OptionId optionId)
     {
-        return QuestionsWithOptions.TryGetValue(questionId, out var options)
-               && options.Contains(optionId);
+        var question = QuestionsWithOptions
+            .FirstOrDefault(kvp => kvp.Key.Value == questionId.Value);
+
+        if (question.Key == null || question.Value == null)
+            return false;
+
+        return question.Value
+            .Where(o => o != null) 
+            .Any(o => o.Value == optionId.Value);
     }
 }

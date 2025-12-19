@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Parrhesia.Domain.SurveyManagement.Repositories;
 using Parrhesia.Domain.Voting.Repositories;
@@ -18,7 +19,13 @@ public static class DependencyInjection
     {
         // DbContext updated to use SQL Server
         services.AddDbContext<ParrhesiaDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        {
+            options.UseSqlServer(connectionString);
+            
+            // Suppress pending model changes warning (false positive in some cases)
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+        });
 
         // Repositories
         services.AddScoped<ISurveyRepository, SurveyRepository>();
