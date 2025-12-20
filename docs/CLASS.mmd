@@ -1,0 +1,405 @@
+classDiagram
+    %% ============================================================
+    %% CAMADA DE DOMÍNIO - BUILDING BLOCKS
+    %% ============================================================
+    
+    class Entity {
+        <<abstract>>
+        +Guid Id
+        #Entity()
+        #Entity(Guid id)
+        +Equals(object?) bool
+        +GetHashCode() int
+    }
+    
+    class ValueObject {
+        <<abstract>>
+        #GetEqualityComponents() IEnumerable~object~
+        +Equals(object?) bool
+        +GetHashCode() int
+    }
+    
+    class AggregateRoot {
+        <<abstract>>
+        -List~IDomainEvent~ _domainEvents
+        +IReadOnlyList~IDomainEvent~ DomainEvents
+        #AddDomainEvent(IDomainEvent)
+        +ClearDomainEvents()
+    }
+    
+    class IDomainEvent {
+        <<interface>>
+        +DateTime OccurredAt
+    }
+    
+    class Result {
+        +bool IsSuccess
+        +bool IsFailure
+        +string Error
+        +Success() Result$
+        +Failure(string) Result$
+        +Success~T~(T) Result~T~$
+        +Failure~T~(string) Result~T~$
+    }
+    
+    class DomainException {
+        <<exception>>
+        +DomainException(string message)
+    }
+    
+    %% ============================================================
+    %% SURVEY MANAGEMENT BOUNDED CONTEXT - AGGREGATE
+    %% ============================================================
+    
+    class Survey {
+        <<Aggregate Root>>
+        -List~Question~ _questions
+        -List~Option~ _options
+        +SurveyId SurveyId
+        +SurveyTitle Title
+        +string Description
+        +SurveyStatus Status
+        +CollectionPeriod CollectionPeriod
+        +IReadOnlyList~Question~ Questions
+        +IReadOnlyList~Option~ Options
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+        --
+        +Create(string, string, DateTime, DateTime)$ Survey
+        +Reconstitute(...)$ Survey
+        --
+        +AddQuestion(string, int)
+        +AddOption(QuestionId, string, int)
+        +RemoveQuestion(QuestionId)
+        +RemoveOption(OptionId)
+        +UpdateTitle(string)
+        +UpdateDescription(string)
+        +UpdateCollectionPeriod(DateTime, DateTime)
+        +Activate()
+        +Close(string)
+        +IsAcceptingVotes() bool
+        +HasOption(QuestionId, OptionId) bool
+        +GetOptionsForQuestion(QuestionId) IReadOnlyList~Option~
+        --
+        -ValidateReadyForActivation()
+        -EnsureDraft()
+        -Touch()
+    }
+    
+    class Question {
+        <<Entity>>
+        +QuestionId QuestionId
+        +QuestionText Text
+        +int Order
+        --
+        +Create(QuestionText, int)$ Question
+        +UpdateText(QuestionText)
+        +UpdateOrder(int)
+    }
+    
+    class Option {
+        <<Entity>>
+        +OptionId OptionId
+        +QuestionId QuestionId
+        +OptionText Text
+        +int Order
+        --
+        +Create(QuestionId, OptionText, int)$ Option
+        +UpdateText(OptionText)
+        +UpdateOrder(int)
+    }
+    
+    %% Value Objects do Survey Context
+    class SurveyId {
+        <<Value Object>>
+        +Guid Value
+        --
+        +NewId()$ SurveyId
+        +Create(Guid)$ SurveyId
+        +Reconstitute(Guid)$ SurveyId
+    }
+    
+    class SurveyTitle {
+        <<Value Object>>
+        +string Value
+        +const int MaxLength = 500
+        --
+        +Create(string)$ SurveyTitle
+        +Reconstitute(string)$ SurveyTitle
+    }
+    
+    class SurveyStatus {
+        <<Value Object>>
+        +string Value
+        +static Draft$ SurveyStatus
+        +static Active$ SurveyStatus
+        +static Closed$ SurveyStatus
+        +bool IsDraft
+        +bool IsActive
+        +bool IsClosed
+        --
+        +FromString(string)$ SurveyStatus
+        +Reconstitute(string)$ SurveyStatus
+    }
+    
+    class CollectionPeriod {
+        <<Value Object>>
+        +DateTime StartDate
+        +DateTime EndDate
+        +const int MinDurationDays = 1
+        +const int MaxDurationDays = 30
+        --
+        +Create(DateTime, DateTime)$ CollectionPeriod
+        +IsActive(DateTime) bool
+        +HasEnded(DateTime) bool
+        +HasStarted(DateTime) bool
+        +TimeSpan Duration
+    }
+    
+    class QuestionText {
+        <<Value Object>>
+        +string Value
+        +const int MaxLength = 500
+        --
+        +Create(string)$ QuestionText
+    }
+    
+    class OptionText {
+        <<Value Object>>
+        +string Value
+        +const int MaxLength = 200
+        --
+        +Create(string)$ OptionText
+    }
+    
+    class QuestionId {
+        <<Value Object>>
+        +Guid Value
+        --
+        +Create(Guid)$ QuestionId
+    }
+    
+    class OptionId {
+        <<Value Object>>
+        +Guid Value
+        --
+        +Create(Guid)$ OptionId
+    }
+    
+    %% Domain Events
+    class SurveyCreatedEvent {
+        <<Domain Event>>
+        +SurveyId SurveyId
+        +SurveyTitle Title
+        +CollectionPeriod CollectionPeriod
+        +DateTime OccurredAt
+    }
+    
+    class SurveyActivatedEvent {
+        <<Domain Event>>
+        +SurveyId SurveyId
+        +DateTime ActivatedAt
+        +DateTime OccurredAt
+    }
+    
+    class SurveyClosedEvent {
+        <<Domain Event>>
+        +SurveyId SurveyId
+        +DateTime ClosedAt
+        +string Reason
+        +DateTime OccurredAt
+    }
+    
+    %% ============================================================
+    %% VOTING BOUNDED CONTEXT - AGGREGATE
+    %% ============================================================
+    
+    class Ballot {
+        <<Aggregate Root>>
+        +BallotId BallotId
+        +SurveyId SurveyId
+        +QuestionId QuestionId
+        +OptionId SelectedOptionId
+        +VoterFingerprint VoterFingerprint
+        +DateTime CastedAt
+        +DeviceInfo? DeviceInfo
+        --
+        +Cast(SurveyId, QuestionId, OptionId, VoterFingerprint, DeviceInfo?)$ Ballot
+        +Reconstitute(...)$ Ballot
+    }
+    
+    class BallotId {
+        <<Value Object>>
+        +Guid Value
+        --
+        +NewId()$ BallotId
+        +Create(Guid)$ BallotId
+    }
+    
+    class VoterFingerprint {
+        <<Value Object>>
+        +string Value
+        +const int ExpectedLength = 64
+        --
+        +Create(string)$ VoterFingerprint
+        +Reconstitute(string)$ VoterFingerprint
+    }
+    
+    class UserId {
+        <<Value Object>>
+        +Guid Value
+        --
+        +Create(Guid)$ UserId
+    }
+    
+    class DeviceInfo {
+        <<Value Object>>
+        +string DeviceId
+        +string UserAgent
+        +string IpHash
+        --
+        +Create(string, string, string)$ DeviceInfo
+    }
+    
+    class BallotCastedEvent {
+        <<Domain Event>>
+        +BallotId BallotId
+        +SurveyId SurveyId
+        +QuestionId QuestionId
+        +OptionId SelectedOptionId
+        +DateTime CastedAt
+        +DateTime OccurredAt
+    }
+    
+    %% ============================================================
+    %% DOMAIN SERVICES
+    %% ============================================================
+    
+    class IVotingService {
+        <<interface>>
+        +CastVoteAsync(UserId, SurveyId, QuestionId, OptionId, DeviceInfo?, CancellationToken) Task~Result~Ballot~~
+    }
+    
+    class VotingService {
+        <<Domain Service>>
+        -IBallotRepository _ballotRepository
+        -IFingerprintGenerator _fingerprintGenerator
+        -ISurveyQueryService _surveyQueryService
+        --
+        +CastVoteAsync(...) Task~Result~Ballot~~
+    }
+    
+    class IFingerprintGenerator {
+        <<interface>>
+        +Generate(UserId, SurveyId) VoterFingerprint
+    }
+    
+    class FingerprintGenerator {
+        <<Domain Service>>
+        -string _systemSalt
+        --
+        +Generate(UserId, SurveyId) VoterFingerprint
+    }
+    
+    class ISurveyQueryService {
+        <<interface - ACL>>
+        +GetSurveyStatusAsync(SurveyId, CancellationToken) Task~SurveyStatusDto?~
+    }
+    
+    class SurveyStatusDto {
+        <<DTO - ACL>>
+        +SurveyId SurveyId
+        +bool IsActive
+        +DateTime StartDate
+        +DateTime EndDate
+        +Dictionary~QuestionId, List~OptionId~~ QuestionsWithOptions
+        --
+        +HasOption(QuestionId, OptionId) bool
+    }
+    
+    %% ============================================================
+    %% REPOSITORY INTERFACES (Domain Layer)
+    %% ============================================================
+    
+    class ISurveyRepository {
+        <<interface>>
+        +GetByIdAsync(SurveyId, CancellationToken) Task~Survey?~
+        +GetActiveAsync(CancellationToken) Task~IReadOnlyList~Survey~~
+        +GetAllAsync(CancellationToken) Task~IReadOnlyList~Survey~~
+        +CountActiveAsync(CancellationToken) Task~int~
+        +AddAsync(Survey, CancellationToken) Task
+        +UpdateAsync(Survey, CancellationToken) Task
+        +ExistsAsync(SurveyId, CancellationToken) Task~bool~
+    }
+    
+    class IBallotRepository {
+        <<interface>>
+        +AddAsync(Ballot, CancellationToken) Task
+        +HasVotedAsync(VoterFingerprint, SurveyId, CancellationToken) Task~bool~
+        +CountBySurveyAsync(SurveyId, CancellationToken) Task~long~
+        +CountByOptionAsync(OptionId, CancellationToken) Task~long~
+    }
+    
+    %% ============================================================
+    %% RELATIONSHIPS
+    %% ============================================================
+    
+    %% Herança de Building Blocks
+    Entity <|-- AggregateRoot
+    AggregateRoot <|-- Survey
+    AggregateRoot <|-- Ballot
+    Entity <|-- Question
+    Entity <|-- Option
+    
+    %% Survey Aggregate
+    Survey "1" *-- "0..*" Question : contém
+    Survey "1" *-- "0..*" Option : contém
+    Survey o-- SurveyId : tem
+    Survey o-- SurveyTitle : tem
+    Survey o-- SurveyStatus : tem
+    Survey o-- CollectionPeriod : tem
+    Question o-- QuestionId : tem
+    Question o-- QuestionText : tem
+    Option o-- OptionId : tem
+    Option o-- OptionText : tem
+    Option --> QuestionId : referencia
+    
+    %% Domain Events
+    Survey ..> SurveyCreatedEvent : emite
+    Survey ..> SurveyActivatedEvent : emite
+    Survey ..> SurveyClosedEvent : emite
+    SurveyCreatedEvent ..|> IDomainEvent
+    SurveyActivatedEvent ..|> IDomainEvent
+    SurveyClosedEvent ..|> IDomainEvent
+    BallotCastedEvent ..|> IDomainEvent
+    
+    %% Ballot Aggregate
+    Ballot o-- BallotId : tem
+    Ballot o-- VoterFingerprint : tem
+    Ballot o-- DeviceInfo : tem
+    Ballot --> SurveyId : referencia
+    Ballot --> QuestionId : referencia
+    Ballot --> OptionId : referencia
+    Ballot ..> BallotCastedEvent : emite
+    
+    %% Domain Services
+    VotingService ..|> IVotingService
+    VotingService --> IBallotRepository : usa
+    VotingService --> IFingerprintGenerator : usa
+    VotingService --> ISurveyQueryService : usa
+    VotingService ..> Ballot : cria
+    FingerprintGenerator ..|> IFingerprintGenerator
+    FingerprintGenerator ..> VoterFingerprint : gera
+    
+    %% ACL
+    ISurveyQueryService ..> SurveyStatusDto : retorna
+    
+    %% Repositories (abstrações)
+    ISurveyRepository ..> Survey : opera
+    IBallotRepository ..> Ballot : opera
+    
+    note for Survey "Aggregate Root: Garante consistência<br/>de Questions e Options.<br/>Valida regras de negócio antes<br/>de ativar (min 1 question,<br/>2-10 options por question)"
+    
+    note for Ballot "Aggregate Root: Voto anônimo<br/>usando VoterFingerprint (SHA256).<br/>Unique constraint (fingerprint + survey)<br/>garante one-vote-per-user"
+    
+    note for ISurveyQueryService "Anti-Corruption Layer:<br/>Protege Voting Context de mudanças<br/>no Survey Context. Interface definida<br/>em Voting, implementada em Infrastructure"

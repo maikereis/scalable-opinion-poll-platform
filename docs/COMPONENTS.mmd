@@ -1,0 +1,215 @@
+graph TB
+    subgraph "🌐 PRESENTATION LAYER - ASP.NET Core Web API"
+        direction TB
+        
+        subgraph "HTTP Pipeline"
+            HTTP_IN["⬇️ HTTP Request<br/>Content-Type: application/json"]
+            HTTP_OUT["⬆️ HTTP Response<br/>Status: 200/201/400/404/409"]
+            
+            MIDDLEWARE_PIPELINE["🔄 Middleware Pipeline"]
+            
+            subgraph "Middlewares"
+                MW1["UseHttpsRedirection()<br/>Force HTTPS"]
+                MW2["UseCors('AllowAll')<br/>Cross-Origin"]
+                MW3["UseResponseCompression()<br/>Gzip/Brotli"]
+                MW4["ExceptionHandlingMiddleware<br/>Try-Catch Global"]
+                MW5["RateLimitingMiddleware<br/>100 req/min (geral)<br/>500 req/min (votes)"]
+            end
+        end
+        
+        subgraph "Controllers (MVC Pattern)"
+            CTRL_SURVEYS["📋 SurveysController<br/>[ApiController]<br/>[Route('api/v1/surveys')]<br/>━━━━━━━━━━━━━━━━<br/>GET    /surveys<br/>POST   /surveys<br/>GET    /surveys/{id}<br/>PATCH  /surveys/{id}<br/>DELETE /surveys/{id}<br/>POST   /surveys/{id}/activate<br/>POST   /surveys/{id}/close<br/>POST   /surveys/{id}/questions<br/>POST   /surveys/{id}/questions/{qid}/options"]
+            
+            CTRL_VOTES["🗳️ VotesController<br/>[ApiController]<br/>[Route('api/v1/surveys/{id}/votes')]<br/>━━━━━━━━━━━━━━━━<br/>POST   /votes<br/>GET    /votes/me<br/>GET    /votes/count<br/>GET    /votes/check"]
+            
+            CTRL_RESULTS["📊 ResultsController<br/>[ApiController]<br/>[Route('api/v1/surveys/{id}/results')]<br/>━━━━━━━━━━━━━━━━<br/>GET    /results<br/>GET    /results/export?format=csv<br/>GET    /results/summary"]
+            
+            CTRL_HEALTH["❤️ HealthController<br/>[ApiController]<br/>[Route('api/v1/health')]<br/>━━━━━━━━━━━━━━━━<br/>GET    /health<br/>GET    /health/detailed<br/>GET    /health/ready<br/>GET    /health/live"]
+        end
+        
+        subgraph "API Contracts (DTOs)"
+            CONTRACTS["📋 Data Transfer Objects<br/>━━━━━━━━━━━━━━━━<br/>• CreateSurveyApiRequest<br/>• CastVoteApiRequest<br/>• SurveyResponse<br/>• VoteResponse<br/>• ApiResponse<T><br/>• ErrorResponse<br/>━━━━━━━━━━━━━━━━<br/>[Required]<br/>[StringLength(max)]<br/>[Range(min,max)]"]
+        end
+        
+        subgraph "Documentation"
+            SWAGGER["📘 Swagger/OpenAPI<br/>━━━━━━━━━━━━━━━━<br/>UI: GET /<br/>Spec: GET /swagger/v1/swagger.json<br/>━━━━━━━━━━━━━━━━<br/>Swashbuckle.AspNetCore 7.2"]
+        end
+    end
+    
+    subgraph "🎯 APPLICATION LAYER - Use Cases (CQRS)"
+        direction TB
+        
+        subgraph "Use Case Interfaces"
+            IUSECASE["⚙️ IUseCase<TRequest, TResponse><br/>━━━━━━━━━━━━━━━━<br/>+ ExecuteAsync(request, ct) Task<TResponse>"]
+        end
+        
+        subgraph "Survey Management Use Cases"
+            UC_CREATE["CreateSurveyUseCase<br/>Request: title, description, dates<br/>Response: Result<CreateSurveyResponse>"]
+            UC_GET["GetSurveyUseCase<br/>Request: surveyId<br/>Response: Result<GetSurveyResponse>"]
+            UC_ACTIVATE["ActivateSurveyUseCase<br/>Request: surveyId<br/>Response: Result<ActivateSurveyResponse><br/>Rule: Max 5 active surveys"]
+            UC_ADD_Q["AddQuestionUseCase<br/>Request: surveyId, text, order<br/>Response: Result<AddQuestionResponse>"]
+            UC_ADD_O["AddOptionUseCase<br/>Request: surveyId, questionId, text<br/>Response: Result<AddOptionResponse>"]
+        end
+        
+        subgraph "Application DTOs"
+            APP_DTOS["📦 Application DTOs<br/>━━━━━━━━━━━━━━━━<br/>• CreateSurveyRequest/Response<br/>• GetSurveyRequest/Response<br/>• ActivateSurveyRequest/Response<br/>• QuestionDto<br/>• OptionDto"]
+        end
+    end
+    
+    subgraph "🏛️ DOMAIN LAYER - Business Logic (DDD)"
+        direction TB
+        
+        subgraph "Survey Management Context"
+            AGG_SURVEY["📋 Survey (Aggregate Root)<br/>━━━━━━━━━━━━━━━━<br/>Entities:<br/>• Survey<br/>• Question (Entity)<br/>• Option (Entity)<br/>━━━━━━━━━━━━━━━━<br/>Value Objects:<br/>• SurveyId, SurveyTitle<br/>• SurveyStatus (Draft/Active/Closed)<br/>• CollectionPeriod (1-30 days)<br/>• QuestionText, OptionText<br/>━━━━━━━━━━━━━━━━<br/>Domain Events:<br/>• SurveyCreatedEvent<br/>• SurveyActivatedEvent<br/>• SurveyClosedEvent<br/>━━━━━━━━━━━━━━━━<br/>Invariants:<br/>✓ Min 1 question to activate<br/>✓ 2-10 options per question<br/>✓ Cannot modify after activation"]
+        end
+        
+        subgraph "Voting Context (Bounded Context)"
+            AGG_BALLOT["🗳️ Ballot (Aggregate Root)<br/>━━━━━━━━━━━━━━━━<br/>Entities:<br/>• Ballot<br/>━━━━━━━━━━━━━━━━<br/>Value Objects:<br/>• BallotId<br/>• VoterFingerprint (SHA256)<br/>• UserId<br/>• DeviceInfo<br/>━━━━━━━━━━━━━━━━<br/>Domain Events:<br/>• BallotCastedEvent<br/>━━━━━━━━━━━━━━━━<br/>Invariants:<br/>✓ One vote per user per survey<br/>✓ Vote only in active surveys<br/>✓ Option must belong to question"]
+            
+            DOM_VOTING["🔧 VotingService<br/>━━━━━━━━━━━━━━━━<br/>+ CastVoteAsync()<br/>1. Verify survey active<br/>2. Generate fingerprint<br/>3. Check duplicate<br/>4. Create ballot<br/>5. Persist"]
+            
+            DOM_FINGER["🔐 FingerprintGenerator<br/>━━━━━━━━━━━━━━━━<br/>+ Generate(userId, surveyId)<br/>SHA256(userId:surveyId:salt)"]
+        end
+        
+        subgraph "Anti-Corruption Layer"
+            ACL["🔍 ISurveyQueryService<br/>━━━━━━━━━━━━━━━━<br/>Interface: Voting Context<br/>Implementation: Infrastructure<br/>━━━━━━━━━━━━━━━━<br/>+ GetSurveyStatusAsync()<br/>Returns: SurveyStatusDto<br/>━━━━━━━━━━━━━━━━<br/>Purpose: Protect Voting from<br/>Survey Context changes"]
+        end
+        
+        subgraph "Repository Interfaces"
+            REPO_INT["📚 Repository Interfaces<br/>━━━━━━━━━━━━━━━━<br/>ISurveyRepository:<br/>• GetByIdAsync()<br/>• GetActiveAsync()<br/>• AddAsync(), UpdateAsync()<br/>━━━━━━━━━━━━━━━━<br/>IBallotRepository:<br/>• AddAsync()<br/>• HasVotedAsync()<br/>• CountBySurveyAsync()"]
+        end
+        
+        subgraph "Common"
+            COMMON["🧱 Building Blocks<br/>━━━━━━━━━━━━━━━━<br/>• Entity (base class)<br/>• ValueObject (base class)<br/>• AggregateRoot (base class)<br/>• IDomainEvent (interface)<br/>• Result<T> (monad)<br/>• DomainException"]
+        end
+    end
+    
+    subgraph "🔧 INFRASTRUCTURE LAYER - Data Access & External Services"
+        direction TB
+        
+        subgraph "Entity Framework Core 9.0"
+            DBCONTEXT["🗄️ ParrhesiaDbContext : DbContext<br/>━━━━━━━━━━━━━━━━<br/>DbSet<Survey> Surveys<br/>DbSet<Question> Questions<br/>DbSet<Option> Options<br/>DbSet<Ballot> Ballots<br/>━━━━━━━━━━━━━━━━<br/>OnModelCreating():<br/>• ApplyConfigurationsFromAssembly()"]
+            
+            subgraph "Fluent API Configurations"
+                CONFIG["⚙️ Entity Configurations<br/>━━━━━━━━━━━━━━━━<br/>SurveyConfiguration:<br/>• Map Value Objects<br/>• OwnsOne(CollectionPeriod)<br/>• Ignore(DomainEvents)<br/>━━━━━━━━━━━━━━━━<br/>BallotConfiguration:<br/>• Unique Index (fingerprint+survey)<br/>• OwnsOne(DeviceInfo)<br/>━━━━━━━━━━━━━━━━<br/>QuestionConfiguration<br/>OptionConfiguration<br/>━━━━━━━━━━━━━━━━<br/>IEntityTypeConfiguration<T>"]
+            end
+            
+            subgraph "Migrations"
+                MIGRATIONS["📋 EF Core Migrations<br/>━━━━━━━━━━━━━━━━<br/>20251219214136_InitialCreate<br/>━━━━━━━━━━━━━━━━<br/>Commands:<br/>• dotnet ef migrations add<br/>• dotnet ef database update<br/>━━━━━━━━━━━━━━━━<br/>Auto-apply on startup (dev)"]
+            end
+        end
+        
+        subgraph "Repository Implementations"
+            REPO_IMPL["📚 Concrete Repositories<br/>━━━━━━━━━━━━━━━━<br/>SurveyRepository:<br/>• Uses EF Core queries<br/>• AsNoTracking() for reads<br/>• Reconstitute aggregates<br/>━━━━━━━━━━━━━━━━<br/>BallotRepository:<br/>• Simple CRUD operations<br/>• LongCountAsync() for stats"]
+        end
+        
+        subgraph "ACL Implementation"
+            ACL_IMPL["🔍 SurveyQueryService<br/>━━━━━━━━━━━━━━━━<br/>Implements: ISurveyQueryService<br/>━━━━━━━━━━━━━━━━<br/>+ GetSurveyStatusAsync()<br/>1. Query Survey entity<br/>2. Query Options<br/>3. Map to DTO<br/>4. Return to Voting Context"]
+        end
+        
+        subgraph "Dependency Injection"
+            DI_INFRA["🔌 DependencyInjection.cs<br/>━━━━━━━━━━━━━━━━<br/>AddInfrastructure(connectionString):<br/>• AddDbContext<ParrhesiaDbContext><br/>• AddScoped<ISurveyRepository><br/>• AddScoped<IBallotRepository><br/>• AddSingleton<IFingerprintGenerator><br/>• AddScoped<IVotingService><br/>━━━━━━━━━━━━━━━━<br/>Lifecycle:<br/>Scoped: Repositories, Use Cases<br/>Singleton: FingerprintGenerator<br/>Transient: (none)"]
+        end
+    end
+    
+    subgraph "💾 DATA LAYER - SQL Server 2022"
+        direction TB
+        
+        SQL[("💾 SQL Server Database<br/>━━━━━━━━━━━━━━━━<br/>Tables:<br/>• Surveys (PK: Id)<br/>• Questions (FK: SurveyId)<br/>• Options (FK: SurveyId, QuestionId)<br/>• Ballots (FK: SurveyId)<br/>━━━━━━━━━━━━━━━━<br/>Indexes:<br/>• IX_Surveys_Status<br/>• IX_Ballots_VoterFingerprint_SurveyId (UNIQUE)<br/>• IX_Ballots_CastedAt<br/>━━━━━━━━━━━━━━━━<br/>Connection String:<br/>Server=localhost,1433;<br/>Database=Parrhesia;<br/>TrustServerCertificate=True")]
+    end
+    
+    subgraph "🔌 CROSS-CUTTING CONCERNS"
+        direction LR
+        
+        LOGGING["📝 ILogger<T><br/>Microsoft.Extensions.Logging<br/>━━━━━━━━━━━━━━━━<br/>Structured logging<br/>Log levels: Info, Warning, Error"]
+        
+        CONFIG["⚙️ Configuration<br/>appsettings.json + Environment Variables<br/>━━━━━━━━━━━━━━━━<br/>ConnectionStrings:DefaultConnection<br/>Security:FingerprintSalt"]
+        
+        HEALTH_SVC["❤️ Health Checks<br/>Microsoft.Extensions.Diagnostics.HealthChecks<br/>━━━━━━━━━━━━━━━━<br/>• AddHealthChecks()<br/>• AddDbContextCheck<ParrhesiaDbContext>()<br/>• MapHealthChecks('/health')"]
+    end
+    
+    %% ============================================================
+    %% RELATIONSHIPS - Request Flow
+    %% ============================================================
+    
+    HTTP_IN --> MW1
+    MW1 --> MW2
+    MW2 --> MW3
+    MW3 --> MW4
+    MW4 --> MW5
+    MW5 --> MIDDLEWARE_PIPELINE
+    
+    MIDDLEWARE_PIPELINE --> CTRL_SURVEYS
+    MIDDLEWARE_PIPELINE --> CTRL_VOTES
+    MIDDLEWARE_PIPELINE --> CTRL_RESULTS
+    MIDDLEWARE_PIPELINE --> CTRL_HEALTH
+    
+    CTRL_SURVEYS --> CONTRACTS
+    CTRL_VOTES --> CONTRACTS
+    CTRL_RESULTS --> CONTRACTS
+    
+    CTRL_SURVEYS --> UC_CREATE
+    CTRL_SURVEYS --> UC_GET
+    CTRL_SURVEYS --> UC_ACTIVATE
+    CTRL_SURVEYS --> UC_ADD_Q
+    CTRL_SURVEYS --> UC_ADD_O
+    
+    CTRL_VOTES --> DOM_VOTING
+    
+    UC_CREATE --> APP_DTOS
+    UC_GET --> APP_DTOS
+    
+    UC_CREATE --> AGG_SURVEY
+    UC_GET --> REPO_INT
+    UC_ACTIVATE --> AGG_SURVEY
+    UC_ACTIVATE --> REPO_INT
+    
+    DOM_VOTING --> DOM_FINGER
+    DOM_VOTING --> ACL
+    DOM_VOTING --> AGG_BALLOT
+    DOM_VOTING --> REPO_INT
+    
+    AGG_SURVEY --> COMMON
+    AGG_BALLOT --> COMMON
+    
+    REPO_INT --> REPO_IMPL
+    ACL --> ACL_IMPL
+    
+    REPO_IMPL --> DBCONTEXT
+    ACL_IMPL --> DBCONTEXT
+    
+    DBCONTEXT --> CONFIG
+    DBCONTEXT --> MIGRATIONS
+    
+    CONFIG --> DBCONTEXT
+    
+    DBCONTEXT --> SQL
+    
+    CTRL_HEALTH --> HEALTH_SVC
+    HEALTH_SVC --> DBCONTEXT
+    
+    MW4 --> LOGGING
+    MW5 --> LOGGING
+    
+    CTRL_SURVEYS --> HTTP_OUT
+    CTRL_VOTES --> HTTP_OUT
+    CTRL_RESULTS --> HTTP_OUT
+    CTRL_HEALTH --> HTTP_OUT
+    
+    HTTP_OUT --> SWAGGER
+    
+    DI_INFRA -.->|"Registra"| DBCONTEXT
+    DI_INFRA -.->|"Registra"| REPO_IMPL
+    DI_INFRA -.->|"Registra"| DOM_VOTING
+    DI_INFRA -.->|"Registra"| DOM_FINGER
+    
+    %% Styling
+    style HTTP_IN fill:#e3f2fd
+    style HTTP_OUT fill:#e3f2fd
+    style DBCONTEXT fill:#fff3e0
+    style SQL fill:#f3e5f5
+    style AGG_SURVEY fill:#e8f5e9
+    style AGG_BALLOT fill:#e8f5e9
+    style DOM_VOTING fill:#e8f5e9
+    style DI_INFRA fill:#fff9c4
+    style SWAGGER fill:#fce4ec

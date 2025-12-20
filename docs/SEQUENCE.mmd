@@ -1,0 +1,178 @@
+sequenceDiagram
+    autonumber
+    
+    box rgb(252, 228, 236) Front-end Layer (Client-Side)
+        participant Browser as 🌐 Web Browser
+        participant SPA as ⚛️ React/Vue/Angular<br/>Single Page App
+        participant HTTP as 📡 HTTP Client<br/>Fetch API / Axios
+    end
+    
+    box rgb(225, 245, 254) ASP.NET Core Back-end (Server-Side)
+        participant CORS as 🌍 CORS<br/>Middleware
+        participant API as 🔌 REST API<br/>ASP.NET Core
+        participant Auth as 🔐 Rate Limiting<br/>Middleware
+        participant BL as 🎯 Business Logic<br/>Use Cases + Domain
+        participant DB as 💾 SQL Server<br/>Database
+    end
+    
+    rect rgb(255, 248, 225)
+        Note over Browser,DB: ═══════════════════════════════════════════════<br/>PROTOCOLO HTTP/HTTPS - COMUNICAÇÃO STATELESS<br/>═══════════════════════════════════════════════
+    end
+    
+    rect rgb(232, 245, 233)
+        Note over SPA,HTTP: 🔄 FASE 1: CARREGAR SURVEYS ATIVAS
+        
+        Browser->>SPA: User acessa /surveys
+        SPA->>SPA: componentDidMount() /<br/>onMounted() / ngOnInit()
+        
+        SPA->>+HTTP: fetch('/api/v1/surveys/active')
+        
+        Note over HTTP: Requisição HTTP GET<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>GET /api/v1/surveys/active HTTP/1.1<br/>Host: api.parrhesia.com<br/>Accept: application/json<br/>Origin: https://app.parrhesia.com<br/>User-Agent: Mozilla/5.0 Chrome/120
+        
+        HTTP->>+CORS: HTTP GET Request
+        CORS->>CORS: Check Origin header<br/>Verify allowed origin
+        
+        alt CORS Blocked
+            CORS-->>HTTP: ❌ 403 Forbidden<br/>Access-Control-Allow-Origin: null
+            HTTP-->>SPA: Error: CORS blocked
+            SPA->>Browser: Show error message
+        else CORS Allowed
+            CORS->>+Auth: Forward request
+            Auth->>Auth: Check rate limit<br/>(100 req/min)
+            
+            alt Rate Limit Exceeded
+                Auth-->>HTTP: ❌ 429 Too Many Requests<br/>Retry-After: 30
+                HTTP-->>SPA: Error: Rate limited
+                SPA->>Browser: Show "Too many requests"
+            else Rate OK
+                Auth->>+API: Route to controller
+                API->>API: SurveysController<br/>.GetActiveSurveys()
+                
+                API->>+BL: Execute use case /<br/>query repository
+                BL->>+DB: SELECT * FROM Surveys<br/>WHERE Status = 'Active'
+                DB-->>-BL: [Survey1, Survey2, ...]
+                BL-->>-API: List<Survey>
+                
+                API->>API: Map to DTO:<br/>Survey → SurveyListItemResponse
+                
+                Note over API: Resposta HTTP 200 OK<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>HTTP/1.1 200 OK<br/>Content-Type: application/json<br/>Access-Control-Allow-Origin: *<br/>X-RateLimit-Limit: 100<br/>X-RateLimit-Remaining: 95<br/><br/>{<br/>  "data": [<br/>    {<br/>      "id": "guid",<br/>      "title": "Survey 1",<br/>      "status": "Active",<br/>      "startDate": "2025-12-19",<br/>      "endDate": "2025-12-31",<br/>      "questionCount": 5<br/>    }<br/>  ],<br/>  "pagination": {<br/>    "total": 3,<br/>    "limit": 10,<br/>    "offset": 0,<br/>    "hasMore": false<br/>  }<br/>}
+                
+                API-->>-Auth: 200 OK + JSON
+                Auth-->>-CORS: Add CORS headers
+                CORS-->>-HTTP: HTTP Response
+                HTTP-->>-SPA: Response data
+                SPA->>SPA: setState({ surveys: data })
+                SPA->>Browser: Render survey list
+            end
+        end
+    end
+    
+    rect rgb(255, 243, 224)
+        Note over SPA,HTTP: 🗳️ FASE 2: VOTAR EM SURVEY
+        
+        Browser->>SPA: User clica "Vote"
+        SPA->>SPA: Abre modal de votação<br/>Exibe questions/options
+        
+        Browser->>SPA: User seleciona option<br/>e clica "Submit Vote"
+        
+        SPA->>SPA: Validar seleção<br/>Gerar/recuperar User ID
+        
+        SPA->>+HTTP: fetch('/api/v1/surveys/{id}/votes', {<br/>  method: 'POST',<br/>  headers: {<br/>    'Content-Type': 'application/json',<br/>    'X-User-Id': 'user-guid'<br/>  },<br/>  body: JSON.stringify({<br/>    questionId: 'question-guid',<br/>    optionId: 'option-guid'<br/>  })<br/>})
+        
+        Note over HTTP: Requisição HTTP POST<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>POST /api/v1/surveys/{id}/votes HTTP/1.1<br/>Host: api.parrhesia.com<br/>Content-Type: application/json<br/>Accept: application/json<br/>X-User-Id: 123e4567-e89b-12d3-a456...<br/><br/>{<br/>  "questionId": "q-guid",<br/>  "optionId": "o-guid"<br/>}
+        
+        HTTP->>+CORS: HTTP POST Request
+        CORS->>+Auth: Forward request
+        Auth->>Auth: Check rate limit<br/>(500 req/min for votes)
+        Auth->>+API: Route to VotesController
+        
+        API->>API: Extract:<br/>- surveyId (route)<br/>- userId (header)<br/>- questionId, optionId (body)
+        
+        API->>API: Validate [Required] attributes
+        
+        alt Validation Failed
+            API-->>HTTP: ❌ 400 Bad Request<br/>{"error": "Invalid request"}
+            HTTP-->>SPA: Validation error
+            SPA->>Browser: Show error message
+        else Validation OK
+            API->>+BL: VotingService.CastVoteAsync()
+            
+            BL->>BL: 1. Verify survey active
+            BL->>+DB: SELECT * FROM Surveys WHERE Id=?
+            DB-->>-BL: Survey (Active)
+            
+            BL->>BL: 2. Generate fingerprint<br/>SHA256(userId:surveyId:salt)
+            
+            BL->>BL: 3. Check duplicate vote
+            BL->>+DB: SELECT COUNT(*) FROM Ballots<br/>WHERE VoterFingerprint=?<br/>  AND SurveyId=?
+            DB-->>-BL: Count = 0
+            
+            alt Already Voted
+                BL-->>API: ❌ Result.Failure("Already voted")
+                API-->>HTTP: 409 Conflict
+                HTTP-->>SPA: Error: Duplicate vote
+                SPA->>Browser: Show "You already voted"
+            else Can Vote
+                BL->>BL: 4. Create Ballot aggregate
+                BL->>BL: 5. Emit BallotCastedEvent
+                
+                BL->>+DB: INSERT INTO Ballots<br/>(Id, SurveyId, QuestionId,<br/> SelectedOptionId, VoterFingerprint,<br/> CastedAt, ...)
+                DB-->>-BL: ✅ Insert successful
+                
+                BL-->>-API: ✅ Result.Success(ballot)
+                
+                API->>API: Map to VoteResponse
+                
+                Note over API: Resposta HTTP 201 Created<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>HTTP/1.1 201 Created<br/>Content-Type: application/json<br/>Location: /api/v1/surveys/{id}/votes/{ballotId}<br/><br/>{<br/>  "ballotId": "ballot-guid",<br/>  "surveyId": "survey-guid",<br/>  "questionId": "question-guid",<br/>  "optionId": "option-guid",<br/>  "castedAt": "2025-12-19T15:30:00Z"<br/>}
+                
+                API-->>-Auth: 201 Created + JSON
+                Auth-->>-CORS: Add CORS headers
+                CORS-->>-HTTP: HTTP Response
+                HTTP-->>-SPA: Vote confirmation
+                SPA->>SPA: setState({ voted: true })
+                SPA->>Browser: Show success message<br/>"Vote cast successfully! ✅"
+            end
+        end
+    end
+    
+    rect rgb(243, 229, 245)
+        Note over SPA,HTTP: 📊 FASE 3: VER RESULTADOS
+        
+        Browser->>SPA: User clica "View Results"
+        
+        SPA->>+HTTP: fetch('/api/v1/surveys/{id}/results')
+        
+        HTTP->>+CORS: HTTP GET Request
+        CORS->>+Auth: Forward request
+        Auth->>+API: Route to ResultsController
+        
+        API->>+BL: Query results
+        
+        BL->>+DB: SELECT COUNT(*) FROM Ballots<br/>WHERE SurveyId=? AND SelectedOptionId=?<br/>GROUP BY SelectedOptionId
+        DB-->>-BL: Vote counts per option
+        
+        BL->>BL: Calculate percentages
+        BL-->>-API: SurveyResultsResponse
+        
+        Note over API: Resposta HTTP 200 OK<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>{<br/>  "surveyId": "guid",<br/>  "title": "Survey Title",<br/>  "totalVotes": 1523,<br/>  "questions": [<br/>    {<br/>      "questionId": "q-guid",<br/>      "text": "Question text?",<br/>      "totalVotes": 1523,<br/>      "options": [<br/>        {<br/>          "optionId": "o-guid-1",<br/>          "text": "Option 1",<br/>          "votes": 892,<br/>          "percentage": 58.57<br/>        },<br/>        {<br/>          "optionId": "o-guid-2",<br/>          "text": "Option 2",<br/>          "votes": 631,<br/>          "percentage": 41.43<br/>        }<br/>      ]<br/>    }<br/>  ]<br/>}
+        
+        API-->>-Auth: 200 OK + JSON
+        Auth-->>-CORS: Add CORS headers
+        CORS-->>-HTTP: HTTP Response
+        HTTP-->>-SPA: Results data
+        
+        SPA->>SPA: setState({ results: data })
+        SPA->>Browser: Render charts/graphs<br/>using Chart.js / Recharts
+    end
+    
+    rect rgb(255, 243, 224)
+        Note over Browser,DB: ═══════════════════════════════════════════════<br/>CARACTERÍSTICAS DO PROTOCOLO<br/>═══════════════════════════════════════════════
+        
+        Note over Browser,SPA: FRONT-END TECHNOLOGIES<br/>━━━━━━━━━━━━━━━━━━━━━━<br/>• Framework: React 18 / Vue 3 / Angular 17<br/>• HTTP Client: Fetch API / Axios<br/>• State Management: Redux / Vuex / RxJS<br/>• UI Components: Material-UI / Vuetify<br/>• Charts: Chart.js / Recharts / D3.js
+        
+        Note over CORS,API: BACK-END TECHNOLOGIES<br/>━━━━━━━━━━━━━━━━━━━━━━<br/>• Framework: ASP.NET Core 9.0<br/>• API Style: REST (Level 2 Richardson)<br/>• Serialization: System.Text.Json<br/>• Validation: Data Annotations<br/>• Documentation: Swagger/OpenAPI 3.0
+        
+        Note over Browser,DB: PROTOCOLO DE COMUNICAÇÃO<br/>━━━━━━━━━━━━━━━━━━━━━━<br/>• Transport: HTTPS (TLS 1.3)<br/>• Port: 443 (production) / 8080 (dev)<br/>• Format: JSON (Content-Type: application/json)<br/>• Authentication: X-User-Id header (stateless)<br/>• CORS: Access-Control-Allow-Origin: *<br/>• Caching: Cache-Control headers<br/>• Compression: Gzip / Brotli<br/>• Rate Limiting: 100-500 req/min per IP/User
+        
+        Note over Browser,DB: SEGURANÇA E QUALIDADE<br/>━━━━━━━━━━━━━━━━━━━━━━<br/>✓ HTTPS obrigatório (redirect HTTP → HTTPS)<br/>✓ CORS configurado para SPAs<br/>✓ Rate limiting por IP/User<br/>✓ Validação de entrada (server-side)<br/>✓ Anonimização via fingerprinting<br/>✓ Unique constraints no DB<br/>✓ Exception handling global<br/>✓ Health checks para monitoring<br/>✓ Structured logging (ILogger)
+    end

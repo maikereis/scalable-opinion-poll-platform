@@ -1,0 +1,203 @@
+---
+config:
+  theme: default
+  look: handDrawn
+  layout: elk
+---
+graph TB
+    subgraph "Camada de Apresentação - ASP.NET Core API"
+        API[("🌐 ASP.NET Core 9.0<br/>REST API")]
+        SWAGGER["📘 Swagger/OpenAPI<br/>Documentação Interativa"]
+        MIDDLEWARE["🛡️ Middleware Pipeline"]
+        
+        subgraph "Controllers"
+            SURVEYS["📋 SurveysController<br/>[ApiController]"]
+            VOTES["🗳️ VotesController<br/>[ApiController]"]
+            RESULTS["📊 ResultsController<br/>[ApiController]"]
+            HEALTH["❤️ HealthController<br/>[ApiController]"]
+        end
+        
+        subgraph "Middlewares Customizados"
+            EXC["⚠️ ExceptionHandling<br/>Middleware"]
+            RATE["🚦 RateLimiting<br/>Middleware"]
+        end
+        
+        subgraph "Contratos de API (DTOs)"
+            REQ["📤 API Requests<br/>CreateSurveyApiRequest<br/>CastVoteApiRequest"]
+            RES["📥 API Responses<br/>SurveyResponse<br/>VoteResponse"]
+        end
+    end
+    
+    subgraph "Camada de Aplicação - Use Cases"
+        UC["🎯 Use Cases (CQRS)"]
+        
+        subgraph "Survey Management Use Cases"
+            CREATE["CreateSurveyUseCase"]
+            ACTIVATE["ActivateSurveyUseCase"]
+            ADDQ["AddQuestionUseCase"]
+            ADDO["AddOptionUseCase"]
+            GET["GetSurveyUseCase"]
+        end
+    end
+    
+    subgraph "Camada de Domínio - DDD"
+        subgraph "Survey Management Context"
+            SURVEY_AGG["📋 Survey (Aggregate Root)<br/>- Title: SurveyTitle<br/>- Status: SurveyStatus<br/>- CollectionPeriod<br/>+ Activate()<br/>+ AddQuestion()<br/>+ AddOption()"]
+            QUESTION_ENT["❓ Question (Entity)<br/>- Text: QuestionText<br/>- Order: int"]
+            OPTION_ENT["✓ Option (Entity)<br/>- Text: OptionText<br/>- Order: int"]
+            
+            SURVEY_VO["📦 Value Objects<br/>• SurveyId<br/>• SurveyTitle<br/>• SurveyStatus<br/>• CollectionPeriod<br/>• QuestionText<br/>• OptionText"]
+        end
+        
+        subgraph "Voting Context (Bounded Context)"
+            BALLOT_AGG["🗳️ Ballot (Aggregate Root)<br/>- VoterFingerprint<br/>- SelectedOptionId<br/>- CastedAt<br/>+ Cast()"]
+            
+            VOTING_VO["📦 Value Objects<br/>• BallotId<br/>• VoterFingerprint<br/>• UserId<br/>• DeviceInfo"]
+            
+            VOTING_SVC["🔧 VotingService<br/>+ CastVoteAsync()<br/>+ ValidateVote()"]
+            FINGER["🔐 FingerprintGenerator<br/>SHA256 Hashing"]
+        end
+        
+        subgraph "Domain Services"
+            SURVEY_QUERY["🔍 ISurveyQueryService<br/>(Anti-Corruption Layer)"]
+        end
+    end
+    
+    subgraph "Camada de Infraestrutura"
+        subgraph "Entity Framework Core 9.0"
+            DBCONTEXT["🗄️ ParrhesiaDbContext<br/>DbContext"]
+            
+            subgraph "Configurações Fluent API"
+                SURVEY_CONFIG["SurveyConfiguration<br/>IEntityTypeConfiguration"]
+                BALLOT_CONFIG["BallotConfiguration<br/>IEntityTypeConfiguration"]
+                QUESTION_CONFIG["QuestionConfiguration"]
+                OPTION_CONFIG["OptionConfiguration"]
+            end
+            
+            subgraph "Migrations"
+                MIG["📋 EF Core Migrations<br/>InitialCreate<br/>Database Versioning"]
+            end
+        end
+        
+        subgraph "Repositories (Repository Pattern)"
+            SURVEY_REPO["📚 SurveyRepository<br/>ISurveyRepository<br/>+ GetByIdAsync()<br/>+ GetActiveAsync()<br/>+ AddAsync()<br/>+ UpdateAsync()"]
+            BALLOT_REPO["🗳️ BallotRepository<br/>IBallotRepository<br/>+ AddAsync()<br/>+ HasVotedAsync()<br/>+ CountBySurveyAsync()"]
+        end
+        
+        subgraph "ACL Implementation"
+            SURVEY_QUERY_IMPL["SurveyQueryService<br/>(ACL Implementation)"]
+        end
+    end
+    
+    subgraph "Banco de Dados"
+        SQLSERVER[("💾 SQL Server 2022<br/>Banco Relacional")]
+        
+        subgraph "Schema do Banco"
+            T_SURVEYS["📋 Surveys Table<br/>• Id (PK)<br/>• Title<br/>• Status<br/>• StartDate, EndDate"]
+            T_QUESTIONS["❓ Questions Table<br/>• Id (PK)<br/>• SurveyId (FK)<br/>• Text<br/>• Order"]
+            T_OPTIONS["✓ Options Table<br/>• Id (PK)<br/>• QuestionId (FK)<br/>• Text<br/>• Order"]
+            T_BALLOTS["🗳️ Ballots Table<br/>• Id (PK)<br/>• SurveyId (FK)<br/>• VoterFingerprint<br/>• SelectedOptionId"]
+        end
+    end
+    
+    subgraph "Cliente Front-end (SPA)"
+        FRONTEND["⚛️ React/Vue/Angular<br/>Single Page Application"]
+        HTTP["🌐 HTTP/HTTPS Client<br/>Fetch API / Axios"]
+    end
+    
+    subgraph "Injeção de Dependências (.NET DI Container)"
+        DI["🔌 IServiceCollection<br/>Dependency Injection<br/>• Scoped: Use Cases, Repositories<br/>• Singleton: FingerprintGenerator<br/>• Transient: Services"]
+    end
+    
+    subgraph "Cross-Cutting Concerns"
+        LOGGING["📝 ILogger<br/>Structured Logging"]
+        CORS["🌍 CORS Policy<br/>AllowAll"]
+        COMPRESSION["📦 Response Compression"]
+        HEALTHCHECK["❤️ Health Checks<br/>DB Connectivity"]
+    end
+    
+    %% Fluxo de Requisição HTTP
+    FRONTEND -->|"1. HTTP Request<br/>(JSON)"| CORS
+    CORS --> MIDDLEWARE
+    MIDDLEWARE --> RATE
+    RATE --> EXC
+    EXC --> API
+    API --> SWAGGER
+    
+    %% Controllers -> Use Cases
+    SURVEYS --> CREATE
+    SURVEYS --> ACTIVATE
+    SURVEYS --> ADDQ
+    SURVEYS --> GET
+    VOTES --> VOTING_SVC
+    RESULTS --> SURVEY_REPO
+    HEALTH --> DBCONTEXT
+    
+    %% Use Cases -> Domain
+    CREATE --> SURVEY_AGG
+    ACTIVATE --> SURVEY_AGG
+    ADDQ --> SURVEY_AGG
+    ADDO --> SURVEY_AGG
+    GET --> SURVEY_REPO
+    
+    %% Domain -> Repositories
+    SURVEY_AGG -.->|"Persisted by"| SURVEY_REPO
+    BALLOT_AGG -.->|"Persisted by"| BALLOT_REPO
+    
+    %% Voting Flow
+    VOTING_SVC --> FINGER
+    VOTING_SVC --> SURVEY_QUERY
+    VOTING_SVC --> BALLOT_REPO
+    VOTING_SVC --> BALLOT_AGG
+    SURVEY_QUERY_IMPL -.->|"Implements"| SURVEY_QUERY
+    
+    %% Repositories -> EF Core
+    SURVEY_REPO --> DBCONTEXT
+    BALLOT_REPO --> DBCONTEXT
+    SURVEY_QUERY_IMPL --> DBCONTEXT
+    
+    %% EF Core -> Database
+    DBCONTEXT -->|"SQL Queries"| SQLSERVER
+    SURVEY_CONFIG -.->|"Configures"| DBCONTEXT
+    BALLOT_CONFIG -.->|"Configures"| DBCONTEXT
+    QUESTION_CONFIG -.->|"Configures"| DBCONTEXT
+    OPTION_CONFIG -.->|"Configures"| DBCONTEXT
+    MIG -->|"Schema Management"| SQLSERVER
+    
+    %% Database Tables
+    SQLSERVER --> T_SURVEYS
+    SQLSERVER --> T_QUESTIONS
+    SQLSERVER --> T_OPTIONS
+    SQLSERVER --> T_BALLOTS
+    
+    T_SURVEYS -->|"1:N"| T_QUESTIONS
+    T_QUESTIONS -->|"1:N"| T_OPTIONS
+    T_SURVEYS -->|"1:N"| T_BALLOTS
+    
+    %% DI Container
+    DI -.->|"Resolve"| SURVEYS
+    DI -.->|"Resolve"| CREATE
+    DI -.->|"Resolve"| SURVEY_REPO
+    DI -.->|"Resolve"| VOTING_SVC
+    DI -.->|"Resolve"| FINGER
+    
+    %% Response Flow
+    SURVEY_REPO -->|"Domain Objects"| GET
+    GET -->|"DTO Mapping"| RES
+    RES --> API
+    API -->|"2. HTTP Response<br/>(JSON)"| FRONTEND
+    
+    %% Cross-cutting
+    LOGGING -.->|"Logs"| EXC
+    LOGGING -.->|"Logs"| RATE
+    HEALTHCHECK --> DBCONTEXT
+    COMPRESSION --> API
+    
+    style API fill:#e1f5ff
+    style DBCONTEXT fill:#fff4e1
+    style SURVEY_AGG fill:#e8f5e9
+    style BALLOT_AGG fill:#e8f5e9
+    style SQLSERVER fill:#f3e5f5
+    style FRONTEND fill:#fce4ec
+    style DI fill:#fff9c4
+    style VOTING_SVC fill:#e8f5e9
