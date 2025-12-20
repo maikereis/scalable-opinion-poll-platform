@@ -1,0 +1,43 @@
+erDiagram
+    SURVEYS ||--o{ QUESTIONS : "tem (1:N)"
+    QUESTIONS ||--o{ OPTIONS : "possui (1:N)"
+    SURVEYS ||--o{ BALLOTS : "recebe_votos (1:N)"
+    OPTIONS ||--o{ BALLOTS : "escolhida_em (1:N)"
+    
+    SURVEYS {
+        uniqueidentifier Id PK "Primary Key (GUID)"
+        nvarchar_500 Title "NOT NULL, max 500 chars"
+        nvarchar_2000 Description "Texto descritivo"
+        nvarchar_20 Status "NOT NULL (Draft, Active, Closed)"
+        datetime2 StartDate "NOT NULL, início da coleta"
+        datetime2 EndDate "NOT NULL, fim da coleta"
+        datetime2 CreatedAt "NOT NULL, timestamp criação"
+        datetime2 UpdatedAt "NOT NULL, timestamp última modificação"
+    }
+    
+    QUESTIONS {
+        uniqueidentifier Id PK "Primary Key (GUID)"
+        uniqueidentifier SurveyId FK "Foreign Key → Surveys.Id"
+        nvarchar_500 Text "NOT NULL, texto da pergunta"
+        int Order "NOT NULL, ordem de exibição"
+    }
+    
+    OPTIONS {
+        uniqueidentifier Id PK "Primary Key (GUID)"
+        uniqueidentifier SurveyId FK "Foreign Key → Surveys.Id (shadow)"
+        uniqueidentifier QuestionId FK "Foreign Key → Questions.Id"
+        nvarchar_200 Text "NOT NULL, texto da opção"
+        int Order "NOT NULL, ordem de exibição"
+    }
+    
+    BALLOTS {
+        uniqueidentifier Id PK "Primary Key (GUID)"
+        uniqueidentifier SurveyId FK "Foreign Key → Surveys.Id"
+        uniqueidentifier QuestionId "ID da pergunta votada"
+        uniqueidentifier SelectedOptionId FK "Foreign Key → Options.Id"
+        nvarchar_64 VoterFingerprint "NOT NULL, SHA256 hash (anonimato)"
+        datetime2 CastedAt "NOT NULL, timestamp do voto"
+        nvarchar_255 DeviceId "Device identifier (opcional)"
+        nvarchar_500 UserAgent "Browser/App info (opcional)"
+        nvarchar_64 IpHash "SHA256 do IP (opcional)"
+    }
